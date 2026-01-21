@@ -1,16 +1,30 @@
-FROM node:20-alpine AS build
+# ---------- BUILD ----------
+FROM node:18-alpine AS build
+
 WORKDIR /app
-COPY package.json vite.config.js ./
-COPY src ./src
-COPY index.html ./
+
+# Copiar manifests PRIMEIRO
+COPY package.json package-lock.json* ./
+
 RUN npm install
+
+# Copiar o resto do código
+COPY . .
+
+# Build do Vite
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+
+# ---------- RUNTIME ----------
+FROM node:18-alpine AS runtime
+
 WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
+
+# Instalar servidor estático
+RUN npm install -g serve
+
+# Copiar build final
 COPY --from=build /app/dist ./dist
-COPY server.cjs ./server.cjs
-EXPOSE 3000
-CMD ["sh","-c","node server.cjs"]
+
+# Railway injeta PORT
+CMD ["sh", "-c", "serve -s dist -l $PORT"]
